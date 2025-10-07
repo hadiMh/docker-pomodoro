@@ -1,0 +1,5 @@
+/venv/
+/db.sqlite3
+/staticfiles/
+/media/
+__pycache__/

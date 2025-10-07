@@ -1,0 +1,8 @@
+asgiref==3.10.0
+dj-database-url==3.0.1
+Django==5.2.7
+django-jalali==7.4.0
+jalali_core==1.0.0
+jdatetime==5.2.0
+sqlparse==0.5.3
+typing_extensions==4.15.0

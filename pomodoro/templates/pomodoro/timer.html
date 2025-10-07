@@ -1,0 +1,724 @@
+{% load jalali_tags %}
+{% load pomodoro_extras %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تایمر پومودورو</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        #logsContainer {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        #logsContainer::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'vazir': ['Vazirmatn', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'bounce-slow': 'bounce 2s infinite',
+                        'slide-in': 'slideIn 0.3s ease-out',
+                        'slide-out': 'slideOut 0.3s ease-in',
+                    },
+                    keyframes: {
+                        slideIn: {
+                            '0%': { transform: 'translateX(100%)' },
+                            '100%': { transform: 'translateX(0)' }
+                        },
+                        slideOut: {
+                            '0%': { transform: 'translateX(0)' },
+                            '100%': { transform: 'translateX(100%)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center p-4 font-vazir relative">
+        <div class="flex items-center justify-center w-full max-w-7xl">
+        <div class="bg-white/95 backdrop-blur-lg rounded-3xl p-8 shadow-2xl w-full max-w-lg text-center">
+            <div class="mb-8">
+                <h1 class="text-4xl font-light text-gray-700 mb-3">
+                    <i class="fas fa-clock text-indigo-600"></i> تایمر پومودورو
+                </h1>
+                <p class="text-gray-500 text-base">تکنیک مدیریت زمان - پروژه دوره داکر کدینگ‌یار</p>
+            </div>
+
+            <div id="timerDisplay" class="relative w-80 h-80 mx-auto mb-8 rounded-full bg-gradient-to-br from-red-400 to-red-600 shadow-xl flex items-center justify-center transition-all duration-500 cursor-pointer hover:scale-105 active:scale-95" onclick="handleTimerClick()">
+                <div class="text-white text-6xl font-light" id="timerText">25:00</div>
+                <div class="absolute bottom-6 text-white text-lg font-medium" id="timerLabel">آماده برای شروع</div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="durationInput" class="block text-gray-700 font-medium mb-3 text-base">مدت زمان (دقیقه)</label>
+                        <input type="number" id="durationInput" value="25" min="1" max="120" 
+                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-center text-xl font-semibold text-gray-700 focus:border-indigo-500 focus:outline-none transition-colors">
+                    </div>
+
+                    <div>
+                        <label for="sessionNameInput" class="block text-gray-700 font-medium mb-3 text-base">نام جلسه</label>
+                        <input type="text" id="sessionNameInput" placeholder="مثال: مطالعه ریاضی، کار روی پروژه" value="جلسه مطالعه"
+                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 focus:border-indigo-500 focus:outline-none transition-colors text-base">
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap justify-center gap-3" id="buttonContainer">
+                    <button class="btn btn-start bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-base" id="startBtn">
+                        <i class="fas fa-play"></i> 
+                        <span class="hidden sm:inline">شروع</span>
+                    </button>
+                    <button class="btn btn-pause bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-base" id="pauseBtn" style="display: none;">
+                        <i class="fas fa-pause"></i> 
+                        <span class="hidden sm:inline">توقف</span>
+                    </button>
+                    <button class="btn btn-resume bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-base" id="resumeBtn" style="display: none;">
+                        <i class="fas fa-play"></i> 
+                        <span class="hidden sm:inline">ادامه</span>
+                    </button>
+                    <button class="btn btn-stop bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-base" id="stopBtn" style="display: none;">
+                        <i class="fas fa-stop"></i> 
+                        <span class="hidden sm:inline">پایان</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="fixed top-6 left-6 flex gap-3 z-40">
+            <button id="muteBtn" class="bg-white/90 hover:bg-white text-gray-700 p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110" title="خاموش/روشن کردن صدا">
+                <i class="fas fa-volume-up text-xl"></i>
+            </button>
+            
+            <button id="logsToggle" class="bg-white/90 hover:bg-white text-gray-700 p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110" title="مشاهده تاریخچه جلسات">
+                <i class="fas fa-history text-xl"></i>
+            </button>
+        </div>
+
+        <div id="logsSidebar" class="fixed top-0 right-0 h-full w-96 bg-white/95 backdrop-blur-lg shadow-2xl transform translate-x-full transition-transform duration-300 z-30 overflow-hidden">
+            <div class="p-6 h-full flex flex-col">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-semibold text-gray-700">
+                        <i class="fas fa-history text-indigo-600"></i> جلسات اخیر
+                    </h3>
+                    <button id="closeLogs" class="text-gray-500 hover:text-gray-700 transition-colors p-2">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <div id="logsContainer" class="flex-1 overflow-y-auto space-y-4" style="direction: rtl;">
+                    {% for log in recent_logs %}
+                    <div class="bg-gray-50 rounded-xl p-5 border-r-4 border-indigo-500 hover:bg-gray-100 transition-colors">
+                        <div class="text-right">
+                            <div class="font-semibold text-gray-800 mb-2 text-base">{{ log.session_name }}</div>
+                            <div class="text-sm text-gray-500 mb-3">
+                                {{ log.duration_minutes }} دقیقه • 
+                                {{ log.start_time|jalali_datetime:"%Y/%m/%d %H:%M" }} - 
+                                {{ log.end_time|jalali_time:"%H:%M" }}
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    {% if log.completed %}
+                                        <span class="inline-block w-3 h-3 bg-green-400 rounded-full"></span>
+                                        <span class="text-sm text-green-600 font-medium">تکمیل شده</span>
+                                    {% else %}
+                                        <span class="inline-block w-3 h-3 bg-gray-400 rounded-full"></span>
+                                        <span class="text-sm text-gray-600 font-medium">متوقف شده</span>
+                                    {% endif %}
+                                </div>
+                                <button class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm transition-colors" 
+                                        onclick="editLogName({{ log.id }}, '{{ log.session_name }}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="bg-gray-50 rounded-xl p-6 text-center">
+                        <div class="font-semibold text-gray-600 mb-2 text-base">هنوز جلسه‌ای وجود ندارد</div>
+                        <div class="text-sm text-gray-500">اولین جلسه پومودوروی خود را شروع کنید!</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="fixed top-5 right-5 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg transform translate-x-full transition-transform duration-300 z-50">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-check-circle"></i>
+            <span id="notificationText"></span>
+        </div>
+    </div>
+
+    <script>
+        let currentSession = null;
+        let timerInterval = null;
+        let isRunning = false;
+        let isPaused = false;
+        let isMuted = false;
+
+        const timerDisplay = document.getElementById('timerDisplay');
+        const timerText = document.getElementById('timerText');
+        const timerLabel = document.getElementById('timerLabel');
+        const durationInput = document.getElementById('durationInput');
+        const sessionNameInput = document.getElementById('sessionNameInput');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notificationText');
+        const logsToggle = document.getElementById('logsToggle');
+        const logsSidebar = document.getElementById('logsSidebar');
+        const closeLogs = document.getElementById('closeLogs');
+        const muteBtn = document.getElementById('muteBtn');
+
+        document.addEventListener('DOMContentLoaded', function() {
+            checkActiveSession();
+            updateTimerDisplay();
+            updateButtonStates();
+            setupLogsSidebar();
+            setupMuteButton();
+        });
+
+        function handleTimerClick() {
+            if (!isRunning && !isPaused) {
+                startBtn.click();
+            } else if (isRunning && !isPaused) {
+                pauseBtn.click();
+            } else if (isPaused) {
+                resumeBtn.click();
+            }
+        }
+
+        function setupLogsSidebar() {
+            logsToggle.addEventListener('click', function() {
+                logsSidebar.classList.remove('translate-x-full');
+                logsSidebar.classList.add('translate-x-0');
+            });
+
+            closeLogs.addEventListener('click', function() {
+                logsSidebar.classList.remove('translate-x-0');
+                logsSidebar.classList.add('translate-x-full');
+            });
+
+            document.addEventListener('click', function(event) {
+                if (!logsSidebar.contains(event.target) && !logsToggle.contains(event.target)) {
+                    logsSidebar.classList.remove('translate-x-0');
+                    logsSidebar.classList.add('translate-x-full');
+                }
+            });
+        }
+
+        function setupMuteButton() {
+            muteBtn.addEventListener('click', function() {
+                isMuted = !isMuted;
+                updateMuteButton();
+                localStorage.setItem('pomodoroMuted', isMuted);
+                showNotification(isMuted ? 'صدا خاموش شد' : 'صدا روشن شد');
+            });
+
+            const savedMuteState = localStorage.getItem('pomodoroMuted');
+            if (savedMuteState !== null) {
+                isMuted = savedMuteState === 'true';
+                updateMuteButton();
+            }
+        }
+
+        function updateMuteButton() {
+            const icon = muteBtn.querySelector('i');
+            if (isMuted) {
+                icon.className = 'fas fa-volume-mute text-xl';
+                muteBtn.className = 'bg-red-100 hover:bg-red-200 text-red-600 p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110';
+            } else {
+                icon.className = 'fas fa-volume-up text-xl';
+                muteBtn.className = 'bg-white/90 hover:bg-white text-gray-700 p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110';
+            }
+        }
+
+        function playStartSound() {
+            if (isMuted) return;
+            
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+            
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        }
+
+        function playStopSound() {
+            if (isMuted) return;
+            
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(400, audioContext.currentTime + 0.1);
+            oscillator.frequency.setValueAtTime(200, audioContext.currentTime + 0.2);
+            
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        }
+
+        async function checkActiveSession() {
+            try {
+                const response = await fetch('/status/');
+                const data = await response.json();
+                
+                if (data.success && data.active) {
+                    currentSession = {
+                        id: data.session_id,
+                        duration: data.duration_minutes,
+                        name: data.session_name,
+                        isPaused: data.is_paused
+                    };
+                    
+                    durationInput.value = data.duration_minutes;
+                    sessionNameInput.value = data.session_name;
+                    
+                    if (data.is_paused) {
+                        isPaused = true;
+                        isRunning = false;
+                        const m = (data.remaining_minutes ?? 0).toString().padStart(2, '0');
+                        const s = (data.remaining_seconds ?? 0).toString().padStart(2, '0');
+                        timerText.textContent = m + ':' + s;
+                        updateButtonStates();
+                        updateTimerLabel('متوقف شده');
+                        updateTimerDisplayClass('paused');
+                    } else {
+                        isRunning = true;
+                        startTimer();
+                        updateTimerLabel('در حال اجرا');
+                        updateTimerDisplayClass('running');
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking active session:', error);
+            }
+        }
+
+        startBtn.addEventListener('click', async function() {
+            const duration = parseInt(durationInput.value);
+            const sessionName = sessionNameInput.value.trim() || 'جلسه مطالعه';
+            
+            if (duration < 1 || duration > 120) {
+                showNotification('لطفاً مدت زمان بین 1 تا 120 دقیقه وارد کنید', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/start/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        duration: duration,
+                        session_name: sessionName
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentSession = {
+                        id: data.session_id,
+                        duration: data.duration,
+                        name: data.session_name
+                    };
+                    
+                    isRunning = true;
+                    isPaused = false;
+                    startTimer();
+                    updateButtonStates();
+                    updateTimerLabel('در حال اجرا');
+                    updateTimerDisplayClass('running');
+                    playStartSound();
+                    showNotification('تایمر شروع شد!');
+                } else {
+                    showNotification('خطا در شروع تایمر: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('خطا در شروع تایمر', 'error');
+                console.error('Error:', error);
+            }
+        });
+
+        pauseBtn.addEventListener('click', async function() {
+            try {
+                const response = await fetch('/pause/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        session_id: currentSession.id
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    isPaused = true;
+                    isRunning = false;
+                    clearInterval(timerInterval);
+                    updateButtonStates();
+                    updateTimerLabel('متوقف شده');
+                    updateTimerDisplayClass('paused');
+                    showNotification('تایمر متوقف شد');
+                } else {
+                    showNotification('خطا در توقف تایمر: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('خطا در توقف تایمر', 'error');
+                console.error('Error:', error);
+            }
+        });
+
+        resumeBtn.addEventListener('click', async function() {
+            try {
+                const response = await fetch('/resume/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        session_id: currentSession.id
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    isPaused = false;
+                    isRunning = true;
+                    startTimer();
+                    updateButtonStates();
+                    updateTimerLabel('در حال اجرا');
+                    updateTimerDisplayClass('running');
+                    playStartSound();
+                    showNotification('تایمر ادامه یافت');
+                } else {
+                    showNotification('خطا در ادامه تایمر: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('خطا در ادامه تایمر', 'error');
+                console.error('Error:', error);
+            }
+        });
+
+        stopBtn.addEventListener('click', async function() {
+            if (confirm('آیا مطمئن هستید که می‌خواهید تایمر را متوقف کنید؟')) {
+                try {
+                    const response = await fetch('/stop/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({
+                            session_id: currentSession.id,
+                            completed: false
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        currentSession = null;
+                        isRunning = false;
+                        isPaused = false;
+                        clearInterval(timerInterval);
+                        updateButtonStates();
+                        updateTimerDisplay();
+                        updateTimerLabel('آماده برای شروع');
+                        updateTimerDisplayClass('ready');
+                        playStopSound();
+                        showNotification('تایمر متوقف و ذخیره شد');
+                        location.reload(); // Refresh to show updated logs
+                    } else {
+                        showNotification('خطا در توقف تایمر: ' + data.error, 'error');
+                    }
+                } catch (error) {
+                    showNotification('خطا در توقف تایمر', 'error');
+                    console.error('Error:', error);
+                }
+            }
+        });
+
+        function startTimer() {
+            timerInterval = setInterval(updateTimerDisplay, 1000);
+        }
+
+        function updateTimerDisplay() {
+            if (!currentSession) {
+                timerText.textContent = durationInput.value.padStart(2, '0') + ':00';
+                return;
+            }
+
+            fetch('/status/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.active) {
+                        const minutes = data.remaining_minutes;
+                        const seconds = data.remaining_seconds;
+                        
+                        timerText.textContent = 
+                            minutes.toString().padStart(2, '0') + ':' + 
+                            seconds.toString().padStart(2, '0');
+                        
+                        if (minutes === 0 && seconds === 0) {
+                            timerCompleted();
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating timer:', error);
+                });
+        }
+
+        function updateTimerDisplayClass(state) {
+            timerDisplay.classList.remove('from-red-400', 'to-red-600', 'from-green-400', 'to-green-600', 'from-yellow-400', 'to-yellow-600');
+            
+            switch(state) {
+                case 'running':
+                    timerDisplay.classList.add('from-red-400', 'to-red-600');
+                    break;
+                case 'paused':
+                    timerDisplay.classList.add('from-yellow-400', 'to-yellow-600');
+                    break;
+                case 'completed':
+                    timerDisplay.classList.add('from-green-400', 'to-green-600');
+                    break;
+                case 'ready':
+                default:
+                    timerDisplay.classList.add('from-red-400', 'to-red-600');
+                    break;
+            }
+        }
+
+        function timerCompleted() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            isPaused = false;
+            
+            playNotificationSound();
+            
+            updateTimerDisplayClass('completed');
+            updateTimerLabel('تکمیل شد!');
+            updateButtonStates();
+            
+            showNotification('زمان تمام شد! کار عالی!', 'success');
+            
+            saveCompletedSession();
+        }
+
+        async function saveCompletedSession() {
+            try {
+                const response = await fetch('/stop/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        session_id: currentSession.id,
+                        completed: true
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentSession = null;
+                    isRunning = false;
+                    isPaused = false;
+                    updateButtonStates();
+                    setTimeout(() => {
+                        location.reload(); // Refresh to show updated logs
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Error saving completed session:', error);
+            }
+        }
+
+        function updateButtonStates() {
+            if (isRunning && !isPaused) {
+                startBtn.style.display = 'none';
+                pauseBtn.style.display = 'flex';
+                resumeBtn.style.display = 'none';
+                stopBtn.style.display = 'flex';
+                
+                pauseBtn.disabled = false;
+                stopBtn.disabled = false;
+                durationInput.disabled = true;
+                sessionNameInput.disabled = true;
+            } else if (isPaused) {
+                startBtn.style.display = 'none';
+                pauseBtn.style.display = 'none';
+                resumeBtn.style.display = 'flex';
+                stopBtn.style.display = 'flex';
+                
+                resumeBtn.disabled = false;
+                stopBtn.disabled = false;
+                durationInput.disabled = true;
+                sessionNameInput.disabled = false;
+            } else {
+                startBtn.style.display = 'flex';
+                pauseBtn.style.display = 'none';
+                resumeBtn.style.display = 'none';
+                stopBtn.style.display = 'none';
+                
+                startBtn.disabled = false;
+                durationInput.disabled = false;
+                sessionNameInput.disabled = false;
+            }
+        }
+
+        function updateTimerLabel(text) {
+            timerLabel.textContent = text;
+        }
+
+        function playNotificationSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        function showNotification(message, type = 'success') {
+            notificationText.textContent = message;
+            
+            if (type === 'error') {
+                notification.className = 'fixed top-5 right-5 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg transform translate-x-full transition-transform duration-300 z-50';
+            } else {
+                notification.className = 'fixed top-5 right-5 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg transform translate-x-full transition-transform duration-300 z-50';
+            }
+            
+            notification.classList.remove('translate-x-full');
+            
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+            }, 3000);
+        }
+
+        function editLogName(logId, currentName) {
+            const newName = prompt('نام جلسه را ویرایش کنید:', currentName);
+            if (newName && newName.trim() !== currentName) {
+                fetch('/update-log-name/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        log_id: logId,
+                        session_name: newName.trim()
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('نام جلسه به‌روزرسانی شد');
+                        location.reload();
+                    } else {
+                        showNotification('خطا در به‌روزرسانی نام: ' + data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('خطا در به‌روزرسانی نام', 'error');
+                    console.error('Error:', error);
+                });
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        sessionNameInput.addEventListener('input', function() {
+            if (currentSession && !isRunning) {
+                fetch('/update-session-name/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        session_id: currentSession.id,
+                        session_name: this.value.trim() || 'جلسه مطالعه'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentSession.name = data.session_name;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating session name:', error);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
